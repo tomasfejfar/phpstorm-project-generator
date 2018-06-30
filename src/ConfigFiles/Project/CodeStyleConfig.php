@@ -4,22 +4,16 @@ declare(strict_types=1);
 
 namespace PhpStormGen\ConfigFiles\Project;
 
-use SimpleXMLElement;
-use function simplexml_load_file;
-
-class CodeStyleConfig
+class CodeStyleConfig extends AbstractConfigFile
 {
     public const DIR = '/codeStyles';
     public const FILE = 'codeStyleConfig.xml';
     public const PATH = self::DIR . '/' . self::FILE;
+    private const USE_PER_PROJECT_SETTINGS = 'USE_PER_PROJECT_SETTINGS';
+    private const PREFERRED_PROJECT_CODE_STYLE = 'PREFERRED_PROJECT_CODE_STYLE';
 
     /** @var string */
-    private $ideaDirectory;
-
-    const USE_PER_PROJECT_SETTINGS = 'USE_PER_PROJECT_SETTINGS';
-    const PREFERRED_PROJECT_CODE_STYLE = 'PREFERRED_PROJECT_CODE_STYLE';
-    const ATTR_OPTION_NAME = 'name';
-    const ATTR_OPTION_VALUE = 'value';
+    protected $ideaDirectory;
 
     public function __construct(
         string $ideaDirectory
@@ -27,40 +21,29 @@ class CodeStyleConfig
         $this->ideaDirectory = $ideaDirectory;
     }
 
-    public function isPerProjectSettings(): bool
-    {
-        $root = $this->getSimpleXml();
-        foreach ($root->state->option as $option) {
-            if ($this->getAttr($option, self::ATTR_OPTION_NAME) === self::USE_PER_PROJECT_SETTINGS) {
-                $this->getAttr($option, self::USE_PER_PROJECT_SETTINGS) === 'true' ? true : false;
-            }
-        }
-        return false;
-    }
-
     public function getPrefferedProjectCodeStyle(): ?string
     {
-        $root = $this->getSimpleXml();
-        foreach ($root->state->option as $option) {
-            if ($this->getAttr($option, self::ATTR_OPTION_NAME) === self::PREFERRED_PROJECT_CODE_STYLE) {
-                return $this->getAttr($option, self::ATTR_OPTION_VALUE);
-            }
+        return $this->getOption(
+            $this->asXml()->state->option,
+            self::PREFERRED_PROJECT_CODE_STYLE
+        );
+    }
+
+    public function isPerProjectSettings(): bool
+    {
+        $perProject = $this->getOption(
+            $this->asXml()->state->option,
+            CodeStyleConfig::USE_PER_PROJECT_SETTINGS
+        );
+        if ($perProject === null) {
+            return false;
         }
-        return null;
+
+        return (bool)$perProject;
     }
 
-    private function getSimpleXml()
+    protected function getFileLocation(): string
     {
-        return simplexml_load_file($this->ideaDirectory . self::PATH);
-    }
-
-    private function getAttr(SimpleXMLElement $element, string $attributeName): string
-    {
-        return (string)$element[$attributeName];
-    }
-
-    private function hasAttr(SimpleXMLElement $element, string $attributeName): bool
-    {
-        return isset($element[$attributeName]);
+        return $this->ideaDirectory . CodeStyleConfig::PATH;
     }
 }

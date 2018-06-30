@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace PhpStormGen;
 
 use PhpStormGen\ConfigFiles\Project\CodeStyleConfig;
+use PhpStormGen\ConfigFiles\Project\CodeStyleFile;
 use PhpStormGen\Exception\Exception;
 use PhpStormGen\Exception\UnmetExpectationException;
 use SimpleXMLElement;
@@ -18,6 +19,8 @@ use function file_get_contents;
 use function file_put_contents;
 use function getcwd;
 use function json_decode;
+use Symfony\Component\Finder\Finder;
+use Symfony\Component\Finder\SplFileInfo;
 
 class ExtractCommand extends Command
 {
@@ -94,10 +97,11 @@ class ExtractCommand extends Command
     protected function getGlobalConfigDirectory(): string
     {
         $rootPath = $this->phpstormUserProfile . '/config';
-        $settingsRepositoryPath = $rootPath . '/settingsRepository';
+        $settingsRepositoryPath = $rootPath . '/settingsRepository/repository';
         if ($this->fs->exists($settingsRepositoryPath)) {
             $rootPath = $settingsRepositoryPath;
         }
+
         return $rootPath;
     }
 
@@ -113,19 +117,42 @@ class ExtractCommand extends Command
             $codeStyleConfigFile = new CodeStyleConfig($this->getIdeaDirectory());
             if ($codeStyleConfigFile->isPerProjectSettings()) {
                 $this->output->writeln('Project is using per-project code style');
-                $projectCodeStyleFilePath = $this->getIdeaDirectory() . CodeStyleConfig::DIR . 'Project.xml';
-                if ($this->fs->exists($projectCodeStyleFilePath)) {
-                    throw new UnmetExpectationException('Project code style is missing');
+                $projectCodeStyleFilePath = $this->getIdeaDirectory() . CodeStyleConfig::DIR . '/Project.xml';
+                if (!$this->fs->exists($projectCodeStyleFilePath)) {
+                    throw new UnmetExpectationException(sprintf(
+                        'Project code style not found in "%s"',
+                        $projectCodeStyleFilePath
+                    ));
                 }
-                $templateCodeStyleFilePath = $this->templateDirectory . '/codeStyle/project/Project.xml';
+                $templateCodeStyleFilePath = $this->getTemplateDirectory() . '/codeStyle/project/Project.xml';
                 $this->fs->copy($projectCodeStyleFilePath, $templateCodeStyleFilePath);
                 $this->output->writeln(sprintf('Code style stored in "%s"', $templateCodeStyleFilePath));
                 $config = $this->readConfig();
-                $config['useProjectCodeStyle'] = true;
+                $config['codeStyle']['perProject'] = true;
                 $this->writeConfig($config);
             } else {
                 $codeStyle = $codeStyleConfigFile->getPrefferedProjectCodeStyle();
                 $this->output->writeln(sprintf('Project is using <info>%s</info> code style', $codeStyle));
+                $finder = new Finder();
+                /** @var SplFileInfo[] $codeStyles */
+                $codeStyles = $finder->in($this->getGlobalConfigDirectory() . '/codestyles')->files();
+                foreach ($codeStyles as $codeStyle) {
+                    $codeStyleFile = new CodeStyleFile($codeStyle->getPathname());
+                    if ($codeStyleFile->getCodeStyleName() === $codeStyle) {
+                        $foundCodeStyleFinderItem = $codeStyle;
+                        break;
+                    }
+                }
+                $templateCodeStyleFilePath = $this->getTemplateDirectory() . '/codeStyle/global/' . $foundCodeStyleFinderItem->getFilename();
+                $this->fs->copy(
+                    $foundCodeStyleFinderItem->getPathname(),
+                    $templateCodeStyleFilePath
+                );
+                $this->output->writeln(sprintf('Code style stored in "%s"', $templateCodeStyleFilePath));
+                $config = $this->readConfig();
+                $config['codeStyle']['perProject'] = false;
+                $config['codeStyle']['name'] = $codeStyle;
+                $this->writeConfig($config);
             }
         }
     }
@@ -162,7 +189,7 @@ class ExtractCommand extends Command
 
     private function writeConfig(array $config)
     {
-        file_put_contents($this->getConfigPath(), $config);
+        file_put_contents($this->getConfigPath(), json_encode($config, \JSON_PRETTY_PRINT));
     }
 
     /**
@@ -170,6 +197,14 @@ class ExtractCommand extends Command
      */
     private function getConfigPath(): string
     {
-        return $this->templateDirectory . '/config.json';
+        return $this->getTemplateDirectory() . '/config.json';
+    }
+
+    /**
+     * @return string
+     */
+    private function getTemplateDirectory(): string
+    {
+        return $this->currentDir . $this->templateDirectory;
     }
 }
