@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace PhpStormGen;
+namespace PhpStormGen\Exception;
 
 use Exception as BaseException;
 
