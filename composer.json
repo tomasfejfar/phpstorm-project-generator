@@ -6,8 +6,10 @@
         "ext-ctype": "*",
         "ext-iconv": "*",
         "symfony/console": "^4.1",
+        "symfony/filesystem": "^4.1",
         "symfony/flex": "^1.0",
         "symfony/lts": "^4@dev",
+        "symfony/var-dumper": "^4.1",
         "symfony/yaml": "^4.1"
     },
     "require-dev": {
