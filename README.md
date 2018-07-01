@@ -1,5 +1,7 @@
 # Share PhpStorm settings in team
 
+> **Warning: Early alpha version, use at you own risk!**
+
 * update paths in `\PhpStormGen\ConfigFiles\PathHelperFactory`
 
 ## Usage
