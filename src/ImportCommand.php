@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace PhpStormGen;
 
 use PhpStormGen\ConfigFiles\Project\CodeStyleConfig;
-use PhpStormGen\ConfigFiles\Project\CodeStyleFile;
 use PhpStormGen\Exception\Exception;
-use PhpStormGen\Exception\UnmetExpectationException;
 use SimpleXMLElement;
+use function sprintf;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
@@ -19,13 +18,11 @@ use function file_get_contents;
 use function file_put_contents;
 use function getcwd;
 use function json_decode;
-use Symfony\Component\Finder\Finder;
-use Symfony\Component\Finder\SplFileInfo;
 
-class ExtractCommand extends Command
+class ImportCommand extends Command
 {
-    const NAME = 'extract';
-    const CHOICE_EXPORT_CODE_STYLE_SETTINGS = 'Export code style settings';
+    const NAME = 'import';
+    const CHOICE_EXPORT_CODE_STYLE_SETTINGS = 'Import code style settings';
 
     /** @var string */
     private $currentDir;
@@ -69,9 +66,9 @@ class ExtractCommand extends Command
         );
         //$choice = $this->getQuestionHelper()->ask($input, $output, $question);
         //if (true || $choice === self::CHOICE_EXPORT_CODE_STYLE_SETTINGS) {
-            $this->exportCodeStyle();
+//            $this->exportCodeStyle();
         //}
-//        $this->importCodeStyle();
+        $this->importCodeStyle();
     }
 
     protected function getQuestionHelper(): QuestionHelper
@@ -104,59 +101,6 @@ class ExtractCommand extends Command
         }
 
         return $rootPath;
-    }
-
-    private function exportCodeStyle(): void
-    {
-        $this->ensureProjectExists();
-
-        if (!$this->fs->exists($this->getIdeaDirectory() . CodeStyleConfig::PATH)) {
-            // it's default setting from user profile
-            throw new Exception('Exporting default settings is not supported yet');
-        } else {
-            // it's local
-            $codeStyleConfigFile = new CodeStyleConfig($this->getIdeaDirectory());
-            if ($codeStyleConfigFile->isPerProjectSettings()) {
-                $this->output->writeln('Project is using per-project code style');
-                $projectCodeStyleFilePath = $this->getIdeaDirectory() . CodeStyleConfig::DIR . '/Project.xml';
-                if (!$this->fs->exists($projectCodeStyleFilePath)) {
-                    throw new UnmetExpectationException(sprintf(
-                        'Project code style not found in "%s"',
-                        $projectCodeStyleFilePath
-                    ));
-                }
-                $templateCodeStyleFilePath = $this->getTemplateDirectory() . CodeStyleConfig::DIR . '/project/Project.xml';
-                $this->fs->copy($projectCodeStyleFilePath, $templateCodeStyleFilePath);
-                $this->output->writeln(sprintf('Code style stored in "%s"', $templateCodeStyleFilePath));
-                $config = $this->readConfig();
-                $config['codeStyle']['perProject'] = true;
-                unset($config['codeStyle']['name']);
-                $this->writeConfig($config);
-            } else {
-                $codeStyleName = $codeStyleConfigFile->getPrefferedProjectCodeStyle();
-                $this->output->writeln(sprintf('Project is using <info>%s</info> code style', $codeStyleName));
-                $finder = new Finder();
-                /** @var SplFileInfo[] $codeStyles */
-                $codeStyles = $finder->in($this->getGlobalConfigDirectory() . '/codestyles')->files();
-                foreach ($codeStyles as $codeStyle) {
-                    $codeStyleFile = new CodeStyleFile($codeStyle->getPathname());
-                    if ($codeStyleFile->getCodeStyleName() === $codeStyleName) {
-                        $foundCodeStyleFinderItem = $codeStyle;
-                        break;
-                    }
-                }
-                $templateCodeStyleFilePath = $this->getTemplateDirectory() . '/codeStyle/global/' . $foundCodeStyleFinderItem->getFilename();
-                $this->fs->copy(
-                    $foundCodeStyleFinderItem->getPathname(),
-                    $templateCodeStyleFilePath
-                );
-                $this->output->writeln(sprintf('Code style stored in "%s"', $templateCodeStyleFilePath));
-                $config = $this->readConfig();
-                $config['codeStyle']['perProject'] = false;
-                $config['codeStyle']['name'] = $codeStyle;
-                $this->writeConfig($config);
-            }
-        }
     }
 
     /**
@@ -210,4 +154,38 @@ class ExtractCommand extends Command
         return $this->currentDir . $this->templateDirectory;
     }
 
+    private function importCodeStyle()
+    {
+        $config = $this->readConfig();
+        if ($config['codeStyle']['perProject'] === true) {
+            $codeStyleTemplateFilePath = CodeStyleConfig::DIR . '/project/Project.xml';
+            $copyFrom = $this->getTemplateDirectory() . $codeStyleTemplateFilePath;
+            $copyTo = $this->getIdeaDirectory() . CodeStyleConfig::PATH;
+            $this->fs->copy($copyFrom, $copyTo);
+            $this->output->writeln(sprintf('Copied per-project code style to "%s"', $copyTo));
+            $codeStyleConfigFile = new CodeStyleConfig($this->getIdeaDirectory());
+            $codeStyleConfigFile->setCodeStylePerProject();
+        } else {
+            dump('NIY');
+        }
+    }
+
+    private function getHomeDir()
+    {
+        // from https://github.com/drush-ops/drush/blob/5a19e6656c8307b71cb674afc96ce1ef58315c80/includes/environment.inc#L649
+        // Cannot use $_SERVER superglobal since that's empty during Drush_UnitTestCase
+        // getenv('HOME') isn't set on Windows and generates a Notice.
+        $home = getenv('HOME');
+        if (!empty($home)) {
+            // home should never end with a trailing slash.
+            $home = rtrim($home, '/');
+        } elseif (!empty($_SERVER['HOMEDRIVE']) && !empty($_SERVER['HOMEPATH'])) {
+            // home on windows
+            $home = $_SERVER['HOMEDRIVE'] . $_SERVER['HOMEPATH'];
+            // If HOMEPATH is a root directory the path can end with a slash. Make sure
+            // that doesn't happen.
+            $home = rtrim($home, '\\/');
+        }
+        return empty($home) ? null : $home;
+    }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace PhpStormGen\ConfigFiles\Project;
 
+use function array_shift;
+use function file_put_contents;
 use SimpleXMLElement;
 
 abstract class AbstractConfigFile
@@ -14,6 +16,14 @@ abstract class AbstractConfigFile
     protected function asXml()
     {
         return simplexml_load_file($this->getFileLocation());
+    }
+
+    protected function writeBack(SimpleXMLElement $toWrite)
+    {
+        $dom = dom_import_simplexml($toWrite)->ownerDocument;
+        $dom->formatOutput = true;
+        $xml = $dom->saveXML($dom->documentElement);
+        file_put_contents($this->getFileLocation(), $xml);
     }
 
     protected function getAttr(SimpleXMLElement $element, string $attributeName): string

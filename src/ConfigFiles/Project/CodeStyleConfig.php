@@ -42,6 +42,15 @@ class CodeStyleConfig extends AbstractConfigFile
         return (bool)$perProject;
     }
 
+    public function setCodeStylePerProject()
+    {
+        $xml = $this->asXml();
+        $option = $xml->state->addChild('option');
+        $option[self::ATTR_OPTION_NAME] = self::USE_PER_PROJECT_SETTINGS;
+        $option[self::ATTR_OPTION_VALUE] = 'true';
+        $this->writeBack($xml);
+    }
+
     protected function getFileLocation(): string
     {
         return $this->ideaDirectory . CodeStyleConfig::PATH;
