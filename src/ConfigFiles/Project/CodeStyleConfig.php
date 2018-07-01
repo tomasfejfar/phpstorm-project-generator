@@ -4,27 +4,32 @@ declare(strict_types=1);
 
 namespace PhpStormGen\ConfigFiles\Project;
 
+use PhpStormGen\ConfigFiles\CodeStylePathHelper;
+
 class CodeStyleConfig extends AbstractConfigFile
 {
-    public const DIR = '/codeStyles';
     public const FILE = 'codeStyleConfig.xml';
-    public const PATH = self::DIR . '/' . self::FILE;
     private const USE_PER_PROJECT_SETTINGS = 'USE_PER_PROJECT_SETTINGS';
     private const PREFERRED_PROJECT_CODE_STYLE = 'PREFERRED_PROJECT_CODE_STYLE';
 
     /** @var string */
-    protected $ideaDirectory;
+    private $fileLocation;
 
     public function __construct(
-        string $ideaDirectory
+        string $fileLocation
     ) {
-        $this->ideaDirectory = $ideaDirectory;
+        $this->fileLocation = $fileLocation;
+    }
+
+    public static function createLocalFromPathHelper(CodeStylePathHelper $helper): self
+    {
+        return new static($helper->getProjectCodeStyleConfigFilePath());
     }
 
     public function getPrefferedProjectCodeStyle(): ?string
     {
         return $this->getOptionValue(
-            $this->asXml()->state->option,
+            'state option',
             self::PREFERRED_PROJECT_CODE_STYLE
         );
     }
@@ -32,7 +37,7 @@ class CodeStyleConfig extends AbstractConfigFile
     public function isPerProjectSettings(): bool
     {
         $perProject = $this->getOptionValue(
-            $this->asXml()->state->option,
+            'state option',
             CodeStyleConfig::USE_PER_PROJECT_SETTINGS
         );
         if ($perProject === null) {
@@ -45,14 +50,20 @@ class CodeStyleConfig extends AbstractConfigFile
     public function setCodeStylePerProject()
     {
         $xml = $this->asXml();
-        $parentElement = $xml->state;
-        $this->setOption($parentElement, self::USE_PER_PROJECT_SETTINGS, 'true');
-        $this->unsetOption($xml->state->option, self::PREFERRED_PROJECT_CODE_STYLE);
+        $this->setOption('state', self::USE_PER_PROJECT_SETTINGS, 'true');
+        $this->unsetOption('state', self::PREFERRED_PROJECT_CODE_STYLE);
         $this->writeBack($xml);
+    }
+
+    public function setCodeStyle(string $codeStyleName)
+    {
+        $this->unsetOption('state', self::USE_PER_PROJECT_SETTINGS);
+        $this->setOption('state', self::PREFERRED_PROJECT_CODE_STYLE, $codeStyleName);
+        //$this->writeBack($xml);
     }
 
     protected function getFileLocation(): string
     {
-        return $this->ideaDirectory . CodeStyleConfig::PATH;
+        return $this->fileLocation;
     }
 }

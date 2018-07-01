@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace PhpStormGen\ConfigFiles\Project;
 
+use DOMElement;
+use Masterminds\HTML5\Elements;
+use QueryPath\DOMQuery;
+
 class CodeStyleFile extends AbstractConfigFile
 {
     const CODESTYLE_ATTR_NAME = 'name';
@@ -19,7 +23,7 @@ class CodeStyleFile extends AbstractConfigFile
 
     public function getCodeStyleName()
     {
-        return $this->getAttr($this->asXml(), self::CODESTYLE_ATTR_NAME);
+        return $this->asXml()->get(0)->getAttribute(self::CODESTYLE_ATTR_NAME);
     }
 
     protected function getFileLocation(): string
