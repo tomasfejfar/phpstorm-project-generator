@@ -23,7 +23,7 @@ class CodeStyleConfig extends AbstractConfigFile
 
     public function getPrefferedProjectCodeStyle(): ?string
     {
-        return $this->getOption(
+        return $this->getOptionValue(
             $this->asXml()->state->option,
             self::PREFERRED_PROJECT_CODE_STYLE
         );
@@ -31,7 +31,7 @@ class CodeStyleConfig extends AbstractConfigFile
 
     public function isPerProjectSettings(): bool
     {
-        $perProject = $this->getOption(
+        $perProject = $this->getOptionValue(
             $this->asXml()->state->option,
             CodeStyleConfig::USE_PER_PROJECT_SETTINGS
         );
@@ -45,9 +45,9 @@ class CodeStyleConfig extends AbstractConfigFile
     public function setCodeStylePerProject()
     {
         $xml = $this->asXml();
-        $option = $xml->state->addChild('option');
-        $option[self::ATTR_OPTION_NAME] = self::USE_PER_PROJECT_SETTINGS;
-        $option[self::ATTR_OPTION_VALUE] = 'true';
+        $parentElement = $xml->state;
+        $this->setOption($parentElement, self::USE_PER_PROJECT_SETTINGS, 'true');
+        $this->unsetOption($xml->state->option, self::PREFERRED_PROJECT_CODE_STYLE);
         $this->writeBack($xml);
     }
 
