@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace PhpStormGen;
 
+use function getcwd;
 use PhpStormGen\ConfigFiles\CodeStylePathHelper;
 use PhpStormGen\Exception\Exception;
 use Symfony\Component\Console\Command\Command;
@@ -63,5 +64,11 @@ abstract class AbstractCommand extends Command
     protected function getConfigPath(): string
     {
         return $this->codeStylePathHelper->getTemplateDirectory() . '/config.json';
+    }
+
+    protected function outputHeader(OutputInterface $output): void
+    {
+        $output->writeln('PhpStorm setup');
+        $output->writeln(sprintf('Working in "%s" directory', getcwd()));
     }
 }
