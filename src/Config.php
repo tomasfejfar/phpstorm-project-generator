@@ -73,6 +73,36 @@ class Config
         return $pointer;
     }
 
+    public function setValue(array $keys, $value)
+    {
+        $config = $this->data;
+        $pointer = &$config;
+        foreach ($keys as $key) {
+            if (!array_key_exists($key, $pointer)) {
+                $pointer[$key] = [];
+            }
+            $pointer = &$pointer[$key];
+        }
+        $pointer = $value;
+    }
+
+    public function unsetValue(array $keys)
+    {
+        if (!count($keys)) {
+            return;
+        }
+        $config = $this->data;
+        $pointer = &$config;
+        foreach ($keys as $key) {
+            if (!array_key_exists($key, $pointer)) {
+                return;
+            }
+            $pointer = &$pointer[$key];
+        }
+
+    }
+
+
     public function getMode()
     {
         return $this->getValue(['mode'], false);
